@@ -5,25 +5,26 @@ import math
 import random
 import datetime
 
-RED = (200, 50, 50)
+# Pixel's area for every particle is (block_side)²:
+BLOCK_SIDE = 10
+
 BLACK = (0, 0, 0)
 WHITE = (200, 200, 200)
+RED = (200, 50, 50)
 GREEN = (50, 200, 50)
-PURPLE = (50, 32, 240)
-# WINDOW_HEIGHT = 1080
-WINDOW_HEIGHT = 800
-# WINDOW_WIDTH = 1920
-WINDOW_WIDTH = 800
+BLUE = (50, 32, 240)
+WINDOW_HEIGHT = 50 * BLOCK_SIDE
+WINDOW_WIDTH = 50 * BLOCK_SIDE 
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 CLOCK = pygame.time.Clock()
 SCREEN.fill(WHITE)
-VISION = 4
+VISION = 5
 ALPHA = 200
-DATA_NUMBER = 800
-ANT_NUMBER = 20
-
-# Pixel's area for every particle is (block_side)²:
-BLOCK_SIDE = 10
+DATA_NUMBER = 500
+ANT_NUMBER = 50
+ITERATIONS = 10000
+COUNTER = 0
+FLAG_COUNTER = False
 
 class Ant:
     def __init__(self, ant_grid):
@@ -34,8 +35,8 @@ class Ant:
         while True:
             self.x = random.randint(0, WINDOW_WIDTH//BLOCK_SIDE - 1)
             self.y = random.randint(0, WINDOW_HEIGHT//BLOCK_SIDE - 1)
-            # grid[y][x] == 0 se não há formiga nesta posição
-            # grid[y][x] == 1 se há formiga nesta posição
+            # ant_grid[y][x] == None se não há formiga nesta posição
+            # ant_grid[y][x] == self se há formiga nesta posição
             if ant_grid[self.y][self.x] == None:
                 ant_grid[self.y][self.x] = self
                 self.rectangle = pygame.Rect(self.x * BLOCK_SIDE, self.y * BLOCK_SIDE, BLOCK_SIDE, BLOCK_SIDE)
@@ -50,8 +51,8 @@ class Data:
         while True:
             self.x = random.randint(0, WINDOW_WIDTH//BLOCK_SIDE - 1)
             self.y = random.randint(0, WINDOW_HEIGHT//BLOCK_SIDE - 1)
-            # grid[y][x] == 0 se não há formiga nesta posição
-            # grid[y][x] == 1 se há formiga nesta posição
+            # data_grid[y][x] == None se não há um dado nesta posição
+            # data_grid[y][x] == self se há um dado nesta posição
             if data_grid[self.y][self.x] == None:
                 data_grid[self.y][self.x] = self
                 self.rectangle = pygame.Rect(self.x * BLOCK_SIDE, self.y * BLOCK_SIDE, BLOCK_SIDE, BLOCK_SIDE)
@@ -107,6 +108,20 @@ def move(ant, ant_grid):
 def updateAll(ants, datas, ant_grid, data_grid):
     countAroundDataForAll(ants, data_grid, VISION)
     updateDataGrid(datas, data_grid)
+    global COUNTER
+    global FLAG_COUNTER
+    global ITERATIONS
+
+    COUNTER += 1
+    # print("COUNTER = " + str(COUNTER))
+
+    if(COUNTER == 2):
+        pygame.image.save(SCREEN, "inicial_grid.jpeg")
+
+    if(COUNTER == ITERATIONS):
+        FLAG_COUNTER = True
+
+    to_remove_ants = []
 
     for ant in ants:
         x = ant.rectangle.left // BLOCK_SIDE 
@@ -114,15 +129,16 @@ def updateAll(ants, datas, ant_grid, data_grid):
 
         # Caso 01 - Formiga sem dado em cima de um dado:
         if (ant.carrying_data == None) and (data_grid[y][x] != None):
-            pick_probability = calcPickProbability(ant, VISION)
-            # print("pick_probability = " + str(pick_probability))
-            if random.random() < pick_probability:
-                data = data_grid[y][x]
-                data_grid[y][x] = None
-                ant.carrying_data = data
-                data.being_carried = True
-                data.carrier = ant
-                # print("Formiga pegou um dado")
+            if(FLAG_COUNTER):
+                to_remove_ants.append(ant)
+            else:
+                pick_probability = calcPickProbability(ant, VISION)
+                if random.random() < pick_probability:
+                    data = data_grid[y][x]
+                    data_grid[y][x] = None
+                    ant.carrying_data = data
+                    data.being_carried = True
+                    data.carrier = ant
         # Caso 02 - Formiga com dado em cima de nada:
         elif (ant.carrying_data != None) and (data_grid[y][x] == None):
             drop_probability = calcDropProbability(ant, VISION)
@@ -134,6 +150,14 @@ def updateAll(ants, datas, ant_grid, data_grid):
                 data.carrier = None
         # Sempre mover a formiga (e o dado que esta estiver carregado):
         move(ant, ant_grid)
+
+    for ant in to_remove_ants:
+        x = ant.rectangle.left // BLOCK_SIDE 
+        y = ant.rectangle.top // BLOCK_SIDE
+
+        ant_grid[y][x] = None
+        ants.remove(ant)
+
             
 def calcPickProbability(ant, vision):
     return max(0, 1 - ((ant.data_around ** 2)/(vision * ALPHA)))
@@ -145,7 +169,7 @@ def DrawGrid(ant_grid, data_grid):
     for y in range(0, WINDOW_HEIGHT//BLOCK_SIDE):
         for x in range(0, WINDOW_WIDTH//BLOCK_SIDE):
             if (ant_grid[y][x] != None) and (ant_grid[y][x].carrying_data != None):
-                pygame.draw.rect(SCREEN, PURPLE, ant_grid[y][x].rectangle, 0)
+                pygame.draw.rect(SCREEN, BLUE, ant_grid[y][x].rectangle, 0)
             elif (ant_grid[y][x] != None) and (ant_grid[y][x].carrying_data == None):
                 pygame.draw.rect(SCREEN, RED, ant_grid[y][x].rectangle, 0)
             elif (ant_grid[y][x] == None) and (data_grid[y][x] != None):
@@ -169,3 +193,6 @@ if __name__ == "__main__":
         updateAll(ants, datas, ant_grid, data_grid)
         DrawGrid(ant_grid, data_grid)
         pygame.display.update()
+        if(len(ants) == 0):
+            pygame.image.save(SCREEN, "final_grid.jpeg")
+            break
