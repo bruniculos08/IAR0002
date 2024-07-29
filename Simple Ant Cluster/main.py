@@ -13,16 +13,16 @@ WHITE = (200, 200, 200)
 RED = (200, 50, 50)
 GREEN = (50, 200, 50)
 BLUE = (50, 32, 240)
-WINDOW_HEIGHT = 50 * BLOCK_SIDE
-WINDOW_WIDTH = 50 * BLOCK_SIDE 
+WINDOW_HEIGHT = 55 * BLOCK_SIDE
+WINDOW_WIDTH = 55 * BLOCK_SIDE 
 SCREEN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 CLOCK = pygame.time.Clock()
 SCREEN.fill(WHITE)
-VISION = 5
-ALPHA = 200
+VISION = 4
+ALPHA = 50
 DATA_NUMBER = 500
 ANT_NUMBER = 50
-ITERATIONS = 10000
+ITERATIONS = 100000
 COUNTER = 0
 FLAG_COUNTER = False
 
@@ -115,7 +115,7 @@ def updateAll(ants, datas, ant_grid, data_grid):
     COUNTER += 1
     # print("COUNTER = " + str(COUNTER))
 
-    if(COUNTER == 2):
+    if(COUNTER == 1):
         pygame.image.save(SCREEN, "inicial_grid.jpeg")
 
     if(COUNTER == ITERATIONS):
@@ -157,8 +157,7 @@ def updateAll(ants, datas, ant_grid, data_grid):
 
         ant_grid[y][x] = None
         ants.remove(ant)
-
-            
+         
 def calcPickProbability(ant, vision):
     return max(0, 1 - ((ant.data_around ** 2)/(vision * ALPHA)))
 
@@ -184,15 +183,20 @@ if __name__ == "__main__":
     ant_grid = [[None for x in range(0, WINDOW_WIDTH//BLOCK_SIDE)] for y in range(0, WINDOW_HEIGHT//BLOCK_SIDE)]
     ants = [Ant(ant_grid) for _ in range(0, ANT_NUMBER)]
 
+    counter = ITERATIONS
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
         random.seed(str(datetime.datetime.now()))
-        updateAll(ants, datas, ant_grid, data_grid)
         DrawGrid(ant_grid, data_grid)
-        pygame.display.update()
+        updateAll(ants, datas, ant_grid, data_grid)
+        if(counter % 1000 == 0):
+            print(counter)
+            pygame.display.update()
         if(len(ants) == 0):
+            DrawGrid(ant_grid, data_grid)
             pygame.image.save(SCREEN, "final_grid.jpeg")
             break
+        counter -= 1

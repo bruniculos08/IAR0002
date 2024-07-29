@@ -7,92 +7,10 @@ bash build.sh main.cpp
 */
 
 int main(void){
-    
-    srand(time(0));
 
-    // Variáveis necessárias para iniciar a janela:
-    SDL_Window *window;
-    window = NULL;
-    SDL_Renderer *renderer;
-    renderer = NULL;
-
-    // Union de evento:
-    SDL_Event event;
-
-    // Criando janela:
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer);
-
-    // Criar grid de dados:
-    Data ***data_grid;
-    data_grid = createDataGrid();
-    // Criar grid de formigas:
-    Ant ***ant_grid;
-    ant_grid = createAntGrid();
-
-    set<Data *> all_data;
-
-    set<Ant *> all_ants;
-    generateAnts(ant_grid, all_ants);
-
-    // generateDataFromFile(data_grid, all_data, "data/FifteenSets.txt", 2, NULL, 15);
-    generateDataFromFile(data_grid, all_data, "data/FifteenSets.txt", 2, NULL, 15);
-
-    normalizeDataSet(all_data);
-
-    bool running = true;
-    int counter = ITERATIONS;
-    while (running && !(all_ants.empty()))
-    {
-        // Verificação de condição para fechar janela:
-        while (SDL_PollEvent(&event))
-        {
-            // Obs.: a função "SDL_PollEvent(SDL_Event *event)" verifica se há um evento na fila de eventos e se houver...
-            // ... e "&event == NULL" coloca este evento em "&event" (caso "&event != NULL" não altera o conteúdo em "&event")...
-            // ... e além disso, independente de "&event", retorna 1 (true) se houver evento na fila e 0 (false) se não houver.
-
-            // Se o tipo do evento for o botão de fechamento da janela:
-            if(event.type == SDL_QUIT) running = false;
-        }
-
-        updateAll(data_grid, all_data, ant_grid, all_ants);
-        
-        if(counter == ITERATIONS)
-        {
-            drawGrid(window, renderer, data_grid, ant_grid);
-            SDL_RenderPresent(renderer);
-            saveScreen(renderer, "images/initial");
-        }
-        else if(counter == 0)
-        {
-            cleanAnts(ant_grid, all_ants);
-        }
-
-        if(all_ants.empty())
-        {
-            drawGrid(window, renderer, data_grid, ant_grid);
-            SDL_RenderPresent(renderer);
-            saveScreen(renderer, "images/final");
-            SDL_Delay(DELAY);
-            cout << "Result = " << calcAverageDistGroup(data_grid, all_data) << endl;
-        }
-
-        // Tirar comentário seguinte para janela atualizar a cada iteração:
-        // drawGrid(window, renderer, data_grid, ant_grid);
-        // SDL_RenderPresent(renderer);
-        // SDL_Delay(DELAY);
-        
-        // Faz update da tela (atualiza os desenhos do renderer):
-        // Equivalente a função "sleep()":
-        // SDL_Delay(DELAY);
-        if(counter > 0) counter--;
-        // cout << counter << endl;
-    }
-
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
+    srandom(time(0));
+    // generateResults(1, "results/averge_dist.txt", "data/FifteenSets.txt", group_15colors, 2, 15, false);
+    generateResults(1, "results/averge_dist.txt", "data/FourSets.txt", group_4colors, 2, 4, false);
     return 0;
 }
 
@@ -140,12 +58,13 @@ Ant ***createAntGrid()
 
 Data::Data(Data ***data_grid, Data *ptr, int dim)
 {
+    
     this->carrier = NULL;
     do
     {
         // A classe já tem variáveis x e y:
-        this->x = rand() % (WINDOW_WIDTH/BLOCK_SIZE);
-        this->y = rand() % (WINDOW_HEIGHT/BLOCK_SIZE);
+        this->x = random() % (WINDOW_WIDTH/BLOCK_SIZE);
+        this->y = random() % (WINDOW_HEIGHT/BLOCK_SIZE);
     } while (data_grid[y][x] != NULL);
     data_grid[y][x] = ptr;
     
@@ -160,8 +79,8 @@ Ant::Ant(Ant ***ant_grid, Ant *ptr)
     do
     {
         // A classe já tem variáveis x e y:
-        x = rand() % (WINDOW_WIDTH/BLOCK_SIZE);
-        y = rand() % (WINDOW_HEIGHT/BLOCK_SIZE);
+        x = random() % (WINDOW_WIDTH/BLOCK_SIZE);
+        y = random() % (WINDOW_HEIGHT/BLOCK_SIZE);
     } while (ant_grid[y][x] != NULL);
     ant_grid[y][x] = ptr;
     this->x = x;
@@ -170,7 +89,7 @@ Ant::Ant(Ant ***ant_grid, Ant *ptr)
 
 long double euclideanDistance(long double *attr0, long double *attr1, int dim)
 {
-    long double sum = 0;
+    long double sum = 0.0L;
     for(int i = 0; i < dim; i++)
     {
         sum += (attr0[i] - attr1[i]) * (attr0[i] - attr1[i]);
@@ -216,8 +135,21 @@ void drawGrid(SDL_Window *window, SDL_Renderer *renderer, Data ***data_grid, Ant
             // (3) Caso no bloco haja uma formiga carregando um dado:
             else if((ant_grid[y][x] != NULL) && (*ant_grid[y][x]).carried != NULL)
             {
-                SDL_SetRenderDrawColor(renderer, 50, 50, 220, 100);
+                // SDL_SetRenderDrawColor(renderer, 50, 50, 220, 100);
+                Data *current_data;
+                current_data = ant_grid[y][x]->carried;
+                if (current_data->color != NULL)
+                {
+                    int R = (*current_data).color[0];
+                    int G = (*current_data).color[1];
+                    int B = (*current_data).color[2];
+                    SDL_SetRenderDrawColor(renderer, R, G, B, 255);
+                }
+                else SDL_SetRenderDrawColor(renderer, 50, 220, 50, 255);
                 SDL_RenderFillRect(renderer, &rect);
+                
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderDrawRect(renderer, &rect);
             }
             // (4) Caso no bloco não haja nenhuma formiga ou dado:
             else // if((ant_grid[y][x] == NULL) && (data_grid[y][x] == NULL))
@@ -256,7 +188,7 @@ void generateAnts(Ant ***ant_grid, set<Ant*> &all_ants)
 
 long double DRand(long double fMin, long double fMax)
 {
-    long double f = (long double)rand() / (long double) RAND_MAX;
+    long double f = ((long double)random()) / ((long double) RAND_MAX);
     return fMin + f * (fMax - fMin);
 }
 
@@ -272,7 +204,7 @@ void printAllDataAttr(set<Data*> &all_data, int dim)
     }
 }
 
-void generateDataFromFile(Data ***data_grid, set<Data*> &all_data, string file_path, int dim, int *group_colors[3], int num_groups)
+void generateDataFromFile(Data ***data_grid, set<Data*> &all_data, string file_path, int dim, int group_colors[][3], int num_groups)
 {
     string line, temp;
     int end_index, group;
@@ -286,7 +218,7 @@ void generateDataFromFile(Data ***data_grid, set<Data*> &all_data, string file_p
     {
         for (int j = 0; j < 3; j++)
         {
-            color_auto[i][j] = rand()%256;
+            color_auto[i][j] = random()%256;
         }
     }
     
@@ -354,7 +286,7 @@ int clampi(int x, int low, int high)
 long double similarity(int x_coord, int y_coord, Data ***data_grid, Data *current, Ant ***ant_grid)
 {
     int x_coord_neighbor, y_coord_neighbor;
-    long double sum = 0.0, s = (2 * RADIUS + 1);
+    long double sum = 0.0L, s = (2.0L * RADIUS + 1.0L);
 
     Data *neighbor;
     pair<int, int> directions[] = {make_pair(-1, 0), make_pair(-1, -1), make_pair(-1, 1),
@@ -369,17 +301,16 @@ long double similarity(int x_coord, int y_coord, Data ***data_grid, Data *curren
             if(data_grid[y_coord_neighbor][x_coord_neighbor] != NULL)
             {
                 neighbor = data_grid[y_coord_neighbor][x_coord_neighbor];
-                sum += (1.0 - euclideanDistance(current->attributes, neighbor->attributes, current->dim) / (long double) ALPHA);
+                sum += (1.0L - euclideanDistance(current->attributes, neighbor->attributes, current->dim) / ALPHA);
             }
             if(ant_grid[y_coord_neighbor][x_coord_neighbor] != NULL && ant_grid[y_coord_neighbor][x_coord_neighbor]->carried != NULL)
             {
                 neighbor = ant_grid[y_coord_neighbor][x_coord_neighbor]->carried;
-                sum += (1.0 - euclideanDistance(current->attributes, neighbor->attributes, current->dim) / (long double) ALPHA);
-
+                sum += (1.0L - euclideanDistance(current->attributes, neighbor->attributes, current->dim) / ALPHA);
             }
         }
     }
-    return sum > 0 ? sum/(s * s - 1) : 0;
+    return sum > 0.0L ? (sum/((s * s) - 1.0L)) : 0.0L;
 }
 
 long double takeProbability(int x_coord, int y_coord, Data ***data_grid, Data *current, Ant ***ant_grid)
@@ -392,22 +323,22 @@ long double dropProbability(int x_coord, int y_coord, Data ***data_grid, Data *c
 {
     long double k2 = K2, f_i = similarity(x_coord, y_coord, data_grid, current, ant_grid);
     // Retorno proposto no slide do professor:
-    // return (f_i / (k2 + f_i)) * (f_i / (k2 + f_i));
+    return (f_i / (k2 + f_i)) * (f_i / (k2 + f_i));
     // Retorno proposto no vídeo que eu encontrei (https://www.youtube.com/watch?v=0lcmeWoOoCU&t=6s&ab_channel=JacovanNiekerk):
-    return (f_i < k2) ? (2 * f_i) : 1;
+    // return (f_i < k2) ? (2 * f_i) : 1;
 }
 
 void move(Data ***data_grid, Ant ***ant_grid, Ant *current)
 {
-    int delta_x = (rand() - RAND_MAX/2) % 2;
-    int delta_y = (rand() - RAND_MAX/2) % 2;
-    
-    while(ant_grid[positiveModulo((current->y + delta_y), (WINDOW_HEIGHT/BLOCK_SIZE))][positiveModulo((current->x + delta_x), (WINDOW_WIDTH/BLOCK_SIZE))] != NULL 
-        && (delta_x != 0 && delta_y != 0))
-    {
-        delta_x = (rand() - RAND_MAX/2) % 2;
-        delta_y = (rand() - RAND_MAX/2) % 2;
-    }
+    int delta_x, delta_y;
+
+    do{
+        delta_x = (random() - RAND_MAX/2) % 2;
+        delta_y = (random() - RAND_MAX/2) % 2;
+        // delta_x = ((int) randomLevyDistribution()) * ((random() - RAND_MAX/2) % 2);
+        // delta_y = ((int) randomLevyDistribution()) * ((random() - RAND_MAX/2) % 2);
+    } while(ant_grid[positiveModulo((current->y + delta_y), (WINDOW_HEIGHT/BLOCK_SIZE))][positiveModulo((current->x + delta_x), (WINDOW_WIDTH/BLOCK_SIZE))] != NULL 
+        && (delta_x != 0 && delta_y != 0));
     
     ant_grid[current->y][current->x] = NULL;
     current->x = positiveModulo((current->x + delta_x), (WINDOW_WIDTH/BLOCK_SIZE));
@@ -432,7 +363,7 @@ void updateAll(Data ***data_grid, set<Data*> &all_data, Ant ***ant_grid, set<Ant
         if(current->carried == NULL && data_grid[y_coord][x_coord] != NULL)
         {
             prob = takeProbability(x_coord, y_coord, data_grid, data_grid[y_coord][x_coord], ant_grid);
-            if(DRand(0.0, 1.0) <= prob)
+            if(DRand(0.0L, 1.0L) <= prob)
             {
                 current->carried = data_grid[y_coord][x_coord];
                 data_grid[y_coord][x_coord] = NULL;
@@ -441,7 +372,7 @@ void updateAll(Data ***data_grid, set<Data*> &all_data, Ant ***ant_grid, set<Ant
         else if(current->carried != NULL && data_grid[y_coord][x_coord] == NULL)
         {
             prob = dropProbability(x_coord, y_coord, data_grid, current->carried, ant_grid);
-            if(DRand(0.0, 1.0) <= prob)
+            if(DRand(0.0L, 1.0L) <= prob)
             {
                 data_grid[y_coord][x_coord] = current->carried;
                 current->carried = NULL;
@@ -518,30 +449,83 @@ void normalizeDataSet(set<Data*> &all_data)
     }
 }
 
-void cleanAnts(Ant ***ant_grid, set<Ant*> &all_ants)
+void cleanAnts(Data ***data_grid, Ant ***ant_grid, set<Ant*> &all_ants)
 {
     set<Ant*> temp;
     temp = all_ants;
+    int removed_count = 0;
     for (Ant *current : temp)
     {
         if(current->carried == NULL)
         {
+            removed_count += 1;
             ant_grid[current->y][current->x] = NULL;
             all_ants.erase(current);
             free(current);
         }
     }
+    
     cout << "Number of ants: " << all_ants.size() << endl;
+    if(removed_count == 0){
+        Ant *almost_dead_ant;
+        almost_dead_ant = *(all_ants.begin());
+        long double max_drop_probability = dropProbability(almost_dead_ant->x, almost_dead_ant->y, data_grid, almost_dead_ant->carried, ant_grid);
+        long double current_drop_probability;
+
+        for(Ant *current : all_ants)
+        {
+            current_drop_probability = dropProbability(current->x, current->y, data_grid, current->carried, ant_grid);
+            if(max_drop_probability < current_drop_probability)
+            {
+                max_drop_probability = current_drop_probability;
+                almost_dead_ant = current;
+            }
+        }
+
+        cout << "No ant removed but there is at least one ant with drop probability equals "
+            << max_drop_probability << " and Similarity equals " 
+            << similarity(almost_dead_ant->x, almost_dead_ant->y, data_grid, almost_dead_ant->carried, ant_grid) << endl;
+    }
 }
 
-void generateResults(int n, string file_path, string data_path, int *group_colors[3], int dim, int num_groups)
+void forceCleanAnts(Data ***data_grid, Ant ***ant_grid, set<Ant*> &all_ants)
+{
+    for (Ant *current : all_ants)
+    {
+        // Não podemos matar formigas que estão carregado um dado e estão em cima de algum dado:
+        if(current->carried != NULL && data_grid[current->y][current->x] == NULL) 
+        {
+            data_grid[current->y][current->x] = current->carried;
+            current->carried->carrier = NULL;
+            ant_grid[current->y][current->x] = NULL;
+            free(current);
+        }
+        else if(current->carried == NULL)
+        {
+            ant_grid[current->y][current->x] = NULL;
+            free(current); 
+        }  
+    }
+    all_ants.clear();
+}
+
+void generateResults(int n, string file_path, string data_path, int group_colors[][3], int dim, int num_groups, bool force_flag)
 {
     file_path.append(".txt");
     ofstream my_file;
     my_file.open(file_path, ios_base::app);
-    my_file << "# ALPHA = " << ALPHA << ", RADIUS = " << RADIUS << ", ANTS_NUMBER = " << ANTS_NUMBER << ", K1 = " << K1 << ", K2 = " << K2 << endl;
+    my_file << "# ALPHA = " << ALPHA << ", RADIUS = " << RADIUS 
+            << ", ANTS_NUMBER = " << ANTS_NUMBER << ", K1 = " << K1 
+            << ", K2 = " << K2 << ", WINDOW_HEIGHT = " << WINDOW_HEIGHT 
+            << ", WINDOW_WIDTH = " << WINDOW_WIDTH 
+            << ", ITERATIONS = " << ITERATIONS << endl;
+    
+    long double average_result = 0.0L, temp;
 
-    srand(time(0));
+    string init_image_path;
+    string final_image_path;
+
+    srandom(time(0));
 
     // Variáveis necessárias para iniciar a janela:
     SDL_Window *window;
@@ -577,27 +561,52 @@ void generateResults(int n, string file_path, string data_path, int *group_color
 
             updateAll(data_grid, all_data, ant_grid, all_ants);
 
+            if (counter % UPDATE_RATE == 0) {
+                cout << counter << endl;
+                drawGrid(window, renderer, data_grid, ant_grid);
+                SDL_RenderPresent(renderer);
+            }
+
             if(counter == ITERATIONS)
             {
+                init_image_path = "images/initial";
+                init_image_path.append(to_string(i));
                 drawGrid(window, renderer, data_grid, ant_grid);
                 SDL_RenderPresent(renderer);
-                saveScreen(renderer, "images/initial");
+                saveScreen(renderer, init_image_path);
             }
-            else if(counter == 0) cleanAnts(ant_grid, all_ants);
-            
-            if(all_ants.empty())
+            else if(counter == 0) 
             {
+                (force_flag) ? forceCleanAnts(data_grid, ant_grid, all_ants) : cleanAnts(data_grid, ant_grid, all_ants);
                 drawGrid(window, renderer, data_grid, ant_grid);
                 SDL_RenderPresent(renderer);
-                saveScreen(renderer, "images/final");
                 SDL_Delay(DELAY);
-                freeGrids(data_grid, all_data, ant_grid, all_ants);
+            }
+            
+            if(all_ants.empty() || running == false)
+            {
+                while(!all_ants.empty())
+                {
+                    forceCleanAnts(data_grid, ant_grid, all_ants);
+                    updateAll(data_grid, all_data, ant_grid, all_ants);
+                }
+                drawGrid(window, renderer, data_grid, ant_grid);
+                SDL_RenderPresent(renderer);
+                SDL_Delay(DELAY);
+                final_image_path = "images/final";
+                final_image_path.append(to_string(i));
+                saveScreen(renderer, final_image_path);
             }
             if(counter > 0) counter--;
         }
-        my_file << calcAverageDistGroup(data_grid, all_data) << endl;
+        
+        temp = calcAverageDistGroup(data_grid, all_data);
+        my_file << temp << endl;
+        cout << temp << endl;
+        average_result += temp;
         freeGrids(data_grid, all_data, ant_grid, all_ants);
     }
+    my_file.close();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -605,9 +614,9 @@ void generateResults(int n, string file_path, string data_path, int *group_color
 
 long double calcAverageDistGroup(Data ***data_grid, set<Data*> &all_data)
 {
-    long double result = 0.0;
+    long double result = 0.0L;
     int num_dist = 0;
-    double delta_x, delta_y;
+    long double delta_x, delta_y;
 
     for (Data *current : all_data)
     {
@@ -616,26 +625,26 @@ long double calcAverageDistGroup(Data ***data_grid, set<Data*> &all_data)
             if(brother->group == current->group)
             {
                 if(current->x <= brother->x)
-                    delta_x = (double) min(brother->x - current->x, current->x - (brother->x - WINDOW_WIDTH/BLOCK_SIZE));
+                    delta_x = (long double) min(brother->x - current->x, current->x - (brother->x - WINDOW_WIDTH/BLOCK_SIZE));
                 else
-                    delta_x = (double) min(current->x - brother->x, brother->x - (current->x - WINDOW_WIDTH/BLOCK_SIZE));
+                    delta_x = (long double) min(current->x - brother->x, brother->x - (current->x - WINDOW_WIDTH/BLOCK_SIZE));
 
                 if(current->y <= brother->y)
-                    delta_y = (double) min(brother->y - current->y, current->y - (brother->y - WINDOW_HEIGHT/BLOCK_SIZE));
+                    delta_y = (long double) min(brother->y - current->y, current->y - (brother->y - WINDOW_HEIGHT/BLOCK_SIZE));
                 else
-                    delta_y = (double) min(current->y - brother->y, brother->y - (current->y - WINDOW_HEIGHT/BLOCK_SIZE));    
+                    delta_y = (long double) min(current->y - brother->y, brother->y - (current->y - WINDOW_HEIGHT/BLOCK_SIZE));    
                     
                 // Como cada distância é adicionada duas vezes, se adiciona apenas...
                 // ... metada cada vez:
-                result += sqrt(delta_x * delta_x + delta_y * delta_y)/2;
+                result += sqrtl(delta_x * delta_x + delta_y * delta_y)/2;
                 num_dist ++;
             }
         }
     }
     num_dist /= 2;
-    long double w = WINDOW_WIDTH/BLOCK_SIZE;
-    long double h = WINDOW_HEIGHT/BLOCK_SIZE;
-    long double max_dist = sqrt(h * h + w * w)/2;
+    long double w = (long double) WINDOW_WIDTH/BLOCK_SIZE;
+    long double h = (long double) WINDOW_HEIGHT/BLOCK_SIZE;
+    long double max_dist = sqrtl(h * h + w * w)/2.0L;
     return result / (max_dist * (long double) num_dist);
 }
 
@@ -661,4 +670,39 @@ void freeGrids(Data ***data_grid, set<Data*> &all_data, Ant ***ant_grid, set<Ant
         free(current);
     }
     all_data.clear();
+}
+
+long double randomLevyDistribution()
+{
+    long double r = ((long double) random()/ (long double) RAND_MAX);
+    return solveComulative(levyDistribution, r, U_LEVY, 10);
+}
+
+long double levyDistribution(long double x)
+{
+    return sqrtl(C_LEVY/(2*MY_PI)) * exp(-C_LEVY/(2 * (x - U_LEVY)))/(powl(x-U_LEVY, 3.0L/2.0L));
+}
+
+// Resolve usando método da bisseção:
+long double solveComulative(long double (* probabilityFunction)(long double x), long double r, long double start_x, long double end_x)
+{
+    long double integral;
+    while(true)
+    {
+        integral = solveIntegral(probabilityFunction, start_x + EPSILON, end_x, INTERVALS);
+        if(fabsl(integral - r) <= PRECISION) return end_x;
+        else if(end_x >= MY_RAND_MAX) return (long double) MY_RAND_MAX;
+        (integral > r) ? end_x /= 2.0L : end_x += (end_x/2.0L);
+    }
+    
+}
+
+long double solveIntegral(long double (* function)(long double x), long double a, long double b, int intervals)
+{
+    long double sum = 0.0L, delta_x = (b - a) / (long double) intervals;
+    for(long double x = a; x < b; x += delta_x)
+    {
+        sum += function(x) * delta_x;
+    }
+    return sum;
 }
